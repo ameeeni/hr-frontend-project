@@ -59,7 +59,8 @@
               "buildTarget": "hr-project-frontend:build:production"
             },
             "development": {
-              "buildTarget": "hr-project-frontend:build:development"
+              "buildTarget": "hr-project-frontend:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
