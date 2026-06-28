@@ -33,6 +33,10 @@ export const routes: Routes = [
       {
         path: 'payroll',
         loadChildren: () => import('./features/payroll/payroll.routes').then(m => m.payrollRoutes)
+      },
+      {
+        path: 'chat',
+        loadChildren: () => import('./features/chat-component/chat.routes').then(m => m.chatRoutes)
       }
     ]
   },

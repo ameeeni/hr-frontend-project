@@ -10,20 +10,32 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router, RouterLink } from '@angular/router';
 import { LeaveService } from '../../core/services/leave.service';
 import { EmployeeService } from '../../core/services/employee.service';
+import{ChatComponent} from '../chat-component/chat-component';
 
 @Component({
   selector: 'app-leave-request',
   standalone: true,
   imports: [
-    ReactiveFormsModule, MatInputModule, MatFormFieldModule,
-    MatButtonModule, MatIconModule, MatCardModule, MatSelectModule,
-    MatSnackBarModule, RouterLink
+    ReactiveFormsModule,
+    MatInputModule,
+    MatFormFieldModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatSelectModule,
+    MatSnackBarModule,
+    RouterLink,
+    ChatComponent
   ],
   template: `
     <div class="page-header">
       <h1 class="page-title">Nouvelle demande de congé</h1>
-      <button mat-button routerLink="/app/leaves"><mat-icon>arrow_back</mat-icon> Retour</button>
+      <button mat-button routerLink="/app/leaves">
+        <mat-icon>arrow_back</mat-icon>
+        Retour
+      </button>
     </div>
+
     <mat-card class="form-card">
       <mat-card-content>
         <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
@@ -55,7 +67,11 @@ import { EmployeeService } from '../../core/services/employee.service';
 
           <div class="form-actions">
             <button mat-button type="button" routerLink="/app/leaves">Annuler</button>
-            <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || saving()">
+            <button
+              mat-raised-button
+              color="primary"
+              type="submit"
+              [disabled]="form.invalid || saving()">
               <mat-icon>send</mat-icon>
               {{ saving() ? 'Envoi...' : 'Soumettre' }}
             </button>
@@ -63,14 +79,50 @@ import { EmployeeService } from '../../core/services/employee.service';
         </form>
       </mat-card-content>
     </mat-card>
+    <app-hr-chatbot></app-hr-chatbot>
   `,
   styles: [`
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-title { margin: 0; font-size: 24px; font-weight: 600; }
-    .form-card { max-width: 700px; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .full-width { grid-column: 1 / -1; }
-    .form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 12px; }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .form-card {
+      max-width: 700px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   `]
 })
 export class LeaveRequestComponent {
@@ -83,32 +135,27 @@ export class LeaveRequestComponent {
   saving = signal(false);
 
   form = this.fb.group({
-    // default to backend enum name
     type: ['CONGE_ANNUEL', Validators.required],
     startDate: ['', Validators.required],
     endDate: ['', Validators.required],
-    reason: ['', Validators.required]
+    reason: ['', [Validators.required, Validators.minLength(3)]]
   });
 
   submit(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.saving()) return;
+
     this.saving.set(true);
 
-    console.log('📤 Récupération de l\'utilisateur connecté...');
-
-    // 1. Récupérer l'utilisateur connecté via getCurrentUser
     this.employeeService.getCurrentUser().subscribe({
       next: (currentUser) => {
-        console.log('✅ Utilisateur récupéré:', currentUser);
-
-        if (!currentUser.id) {
-          this.snackBar.open('Erreur: ID utilisateur introuvable', 'OK', { duration: 3000 });
+        if (!currentUser?.id) {
+          this.snackBar.open('Erreur : ID utilisateur introuvable', 'OK', { duration: 3000 });
           this.saving.set(false);
           return;
         }
 
-        // 2. Préparer le payload
-        const formValue = this.form.value as any;
+        const formValue = this.form.getRawValue();
+
         const payload = {
           dateDebut: formValue.startDate,
           dateFin: formValue.endDate,
@@ -116,30 +163,26 @@ export class LeaveRequestComponent {
           motif: formValue.reason
         };
 
-        console.log('📤 Envoi de la demande pour employeeId:', currentUser.id);
-        console.log('📤 Payload:', payload);
-
-        // 3. Soumettre la demande avec l'endpoint backend existant
-        this.leaveService.submitForEmployee(currentUser.id, payload as any).subscribe({
+        this.leaveService.submitForEmployee(currentUser.id, payload).subscribe({
           next: () => {
-            console.log('✅ Demande soumise avec succès');
             this.snackBar.open('Demande soumise avec succès', 'OK', { duration: 3000 });
             this.router.navigate(['/app/leaves']);
           },
           error: (err: any) => {
-            console.error('❌ Erreur soumission:', err);
             const msg = err?.error?.message ?? 'Erreur lors de la soumission';
             this.snackBar.open(msg, 'OK', { duration: 4000 });
             this.saving.set(false);
           }
         });
       },
-      error: (err) => {
-        console.error('❌ Erreur récupération utilisateur:', err);
-        this.snackBar.open('Impossible de récupérer vos informations. Veuillez vous reconnecter.', 'OK', { duration: 4000 });
+      error: () => {
+        this.snackBar.open(
+          'Impossible de récupérer vos informations. Veuillez vous reconnecter.',
+          'OK',
+          { duration: 4000 }
+        );
         this.saving.set(false);
       }
     });
   }
 }
-

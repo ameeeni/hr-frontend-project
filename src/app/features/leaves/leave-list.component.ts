@@ -16,6 +16,7 @@ import { Leave } from '../../core/models/leave.model';
 import { KeycloakService } from '../../core/auth/keycloak.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 import { DatePipe } from '@angular/common';
+import {ChatComponent} from '../chat-component/chat-component';
 
 @Component({
   selector: 'app-leave-list',
@@ -23,7 +24,7 @@ import { DatePipe } from '@angular/common';
   imports: [
     MatTableModule, MatButtonModule, MatIconModule, MatCardModule,
     MatChipsModule, MatTooltipModule, MatDialogModule, MatSnackBarModule,
-    MatProgressSpinnerModule, MatTabsModule, RouterLink, DatePipe
+    MatProgressSpinnerModule, MatTabsModule, RouterLink, DatePipe,ChatComponent
   ],
   template: `
     <div class="page-header">
@@ -95,6 +96,7 @@ import { DatePipe } from '@angular/common';
         }
       </mat-card-content>
     </mat-card>
+    <app-hr-chatbot></app-hr-chatbot>
   `,
   styles: [`
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
