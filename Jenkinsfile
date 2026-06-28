@@ -60,12 +60,14 @@ pipeline {
         stage('4 — SonarQube') {
             when { not { expression { return params.SKIP_SONAR } } }
             steps {
-                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        npx sonar-scanner \
-                            -Dsonar.host.url="$SONAR_HOST_URL" \
-                            -Dsonar.token="$SONAR_TOKEN"
-                    '''
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            npx sonar-scanner \
+                                -Dsonar.host.url="$SONAR_HOST_URL" \
+                                -Dsonar.token="$SONAR_TOKEN"
+                        '''
+                    }
                 }
             }
         }
@@ -73,20 +75,22 @@ pipeline {
         stage('5 — Quality Gate') {
             when { not { expression { return params.SKIP_SONAR } } }
             steps {
-                script {
-                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                        sleep 10
-                        def qg = sh(
-                            script: '''
-                                curl -s -u "$SONAR_TOKEN:" \
-                                    "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=hr-frontend" \
-                                    | grep -o '"status":"[^"]*"' | head -1
-                            ''',
-                            returnStdout: true
-                        ).trim()
-                        echo "Quality Gate : ${qg}"
-                        if (qg.contains('ERROR')) {
-                            error("Quality Gate FAILED")
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    script {
+                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                            sleep 10
+                            def qg = sh(
+                                script: '''
+                                    curl -s -u "$SONAR_TOKEN:" \
+                                        "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=hr-frontend" \
+                                        | grep -o '"status":"[^"]*"' | head -1
+                                ''',
+                                returnStdout: true
+                            ).trim()
+                            echo "Quality Gate : ${qg}"
+                            if (qg.contains('ERROR')) {
+                                error("Quality Gate FAILED")
+                            }
                         }
                     }
                 }
